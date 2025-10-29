@@ -36,9 +36,9 @@ typedef enum {
     R_FLW_JSV_BGN,  BR_FLW_JSV_BGN,
     R_FLW_NJV_BGN,  BR_FLW_NJV_BGN,
     R_DQT_STR_BGN,  BR_DQT_STR_BGN, B_DQT_STR_BGN,
-    R_DQT_STR_CTN,  BR_DQT_STR_CTN,
-    R_DQT_ESC_NWL,  BR_DQT_ESC_NWL,
-    R_DQT_ESC_SEQ,  BR_DQT_ESC_SEQ,
+    R_DQT_STR_CTN,  BR_DQT_STR_CTN, B_DQT_STR_CTN,
+    R_DQT_ESC_NWL,  BR_DQT_ESC_NWL, B_DQT_ESC_NWL,
+    R_DQT_ESC_SEQ,  BR_DQT_ESC_SEQ, B_DQT_ESC_SEQ,
     R_DQT_STR_END,  BR_DQT_STR_END,
     R_SQT_STR_BGN,  BR_SQT_STR_BGN, B_SQT_STR_BGN,
     R_SQT_STR_CTN,  BR_SQT_STR_CTN,
@@ -826,7 +826,7 @@ static bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
     init(scanner);
     mrk_end(scanner, lexer);
 
-    bool allow_comment = !(valid_symbols[R_DQT_STR_CTN] || valid_symbols[BR_DQT_STR_CTN] ||
+    bool allow_comment = !(valid_symbols[R_DQT_STR_CTN] || valid_symbols[BR_DQT_STR_CTN] || valid_symbols[B_DQT_STR_CTN] ||
                            valid_symbols[R_SQT_STR_CTN] || valid_symbols[BR_SQT_STR_CTN]);
     int16_t *ind_ptr = scanner->ind_len_stk.contents + scanner->ind_len_stk.size - 1;
     int16_t *ind_end = scanner->ind_len_stk.contents - 1;
@@ -920,7 +920,8 @@ static bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
     }
 
     if ((valid_symbols[R_DQT_STR_CTN] && is_r && scn_dqt_str_cnt(scanner, lexer, R_DQT_STR_CTN)) ||
-        (valid_symbols[BR_DQT_STR_CTN] && is_br && scn_dqt_str_cnt(scanner, lexer, BR_DQT_STR_CTN))) {
+        (valid_symbols[BR_DQT_STR_CTN] && is_br && scn_dqt_str_cnt(scanner, lexer, BR_DQT_STR_CTN)) ||
+        (valid_symbols[B_DQT_STR_CTN] && is_b && scn_dqt_str_cnt(scanner, lexer, B_DQT_STR_CTN))) {
         return true;
     }
 
@@ -1268,9 +1269,11 @@ static bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
     } else if (lexer->lookahead == '\\') {
         bool is_r_dqt_esc_nwl = valid_symbols[R_DQT_ESC_NWL] && is_r;
         bool is_br_dqt_esc_nwl = valid_symbols[BR_DQT_ESC_NWL] && is_br;
+        bool is_b_dqt_esc_nwl = valid_symbols[B_DQT_ESC_NWL] && is_b;
         bool is_r_dqt_esc_seq = valid_symbols[R_DQT_ESC_SEQ] && is_r;
         bool is_br_dqt_esc_seq = valid_symbols[BR_DQT_ESC_SEQ] && is_br;
-        if (is_r_dqt_esc_nwl || is_br_dqt_esc_nwl || is_r_dqt_esc_seq || is_br_dqt_esc_seq) {
+        bool is_b_dqt_esc_seq = valid_symbols[B_DQT_ESC_SEQ] && is_b;
+        if (is_r_dqt_esc_nwl || is_br_dqt_esc_nwl || is_b_dqt_esc_nwl || is_r_dqt_esc_seq || is_br_dqt_esc_seq || is_b_dqt_esc_seq) {
             adv(scanner, lexer);
             if (is_nwl(lexer->lookahead)) {
                 if (is_r_dqt_esc_nwl) {
@@ -1281,12 +1284,19 @@ static bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid_symbols) {
                     mrk_end(scanner, lexer);
                     RET_SYM(BR_DQT_ESC_NWL)
                 }
+                if (is_b_dqt_esc_nwl) {
+                    mrk_end(scanner, lexer);
+                    RET_SYM(B_DQT_ESC_NWL)
+                }
             }
             if (is_r_dqt_esc_seq) {
                 return scn_dqt_esc_seq(scanner, lexer, R_DQT_ESC_SEQ);
             }
             if (is_br_dqt_esc_seq) {
                 return scn_dqt_esc_seq(scanner, lexer, BR_DQT_ESC_SEQ);
+            }
+            if (is_b_dqt_esc_seq) {
+                return scn_dqt_esc_seq(scanner, lexer, B_DQT_ESC_SEQ);
             }
             return false;
         }
